@@ -86,7 +86,7 @@
           <template #header>
             <div class="card-header">
               <span>实时告警</span>
-              <el-button type="primary" size="small">查看全部</el-button>
+              <el-button type="primary" size="small" @click="goDrillingMonitor">查看全部</el-button>
             </div>
           </template>
           <el-table :data="alarmList" style="width: 100%">
@@ -106,25 +106,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import type { DrillingAlarm } from '@/api/drilling'
+import { useDrillingMonitorStore } from '@/store/modules/drillingMonitor'
 
-const statistics = ref({
+const router = useRouter()
+const drillingMonitorStore = useDrillingMonitorStore()
+
+const wellNameMap: Record<number, string> = {
+  1: 'A-01井',
+  2: 'B-03井',
+  3: 'C-02井',
+  4: 'D-05井',
+  5: 'E-01井'
+}
+
+const statistics = computed(() => ({
   wellCount: 156,
   drillingCount: 12,
   productionCount: 89,
-  alarmCount: 5
-})
+  alarmCount: drillingMonitorStore.allAlarms.length
+}))
 
-const alarmList = ref([
-  { wellName: 'A-01井', alarmType: '钻压异常', level: '严重', time: '2024-01-15 10:30' },
-  { wellName: 'B-03井', alarmType: '温度超标', level: '警告', time: '2024-01-15 10:25' },
-  { wellName: 'C-02井', alarmType: '设备故障', level: '严重', time: '2024-01-15 10:15' },
-  { wellName: 'D-05井', alarmType: '产量偏低', level: '提示', time: '2024-01-15 10:00' },
-  { wellName: 'E-01井', alarmType: '环保指标', level: '警告', time: '2024-01-15 09:45' }
-])
+const alarmList = computed(() => drillingMonitorStore.allAlarms.slice(0, 8).map((alarm: DrillingAlarm) => ({
+  id: alarm.id,
+  wellName: wellNameMap[alarm.wellId] || `井${alarm.wellId}`,
+  alarmType: alarm.content.includes('钻压') ? '钻压异常' : alarm.level,
+  level: alarm.level,
+  time: alarm.time
+})))
 
 const productionTrendChart = ref<HTMLElement>()
 const wellStatusChart = ref<HTMLElement>()
@@ -137,6 +151,10 @@ const getAlarmType = (level: string) => {
     '提示': 'info'
   }
   return map[level] || 'info'
+}
+
+const goDrillingMonitor = () => {
+  router.push('/drilling')
 }
 
 const initProductionTrendChart = () => {
